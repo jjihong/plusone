@@ -1,0 +1,51 @@
+name: Monthly Product Crawl
+
+on:
+  # 매월 1일 새벽 3시에 실행 (UTC 기준 자정)
+  schedule:
+    - cron: '0 0 1 * *'
+  # GitHub Actions 탭에서 수동으로 실행할 수 있도록 설정
+  workflow_dispatch:
+
+jobs:
+  build-and-crawl:
+    # 실행 환경 설정
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. 소스 코드 가져오기
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # 2. 파이썬 환경 설정
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11' # 프로젝트와 일치하는 파이썬 버전 사용
+
+    # 3. C++ 빌드 도구 및 파이썬 라이브러리 설치
+    - name: Install build tools and dependencies
+      run: |
+        # pyroaring 라이브러리 빌드에 필요한 C++ 컴파일러 설치
+        sudo apt-get update && sudo apt-get install -y build-essential
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    # 4. Supabase 접속 정보를 사용하여 .env 파일 생성
+    - name: Create .env file
+      run: |
+        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+        echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
+      # GitHub 저장소의 Secrets에 SUPABASE_URL 와 SUPABASE_KEY 를 등록해야 합니다.
+
+    # 5. 크롤러 스크립트 실행
+    - name: Run Crawler
+      run: |
+        python main.py
+
+    # 6. 결과물인 JSON 파일을 아티팩트로 업로드 (결과 확인용)
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: all-products-json
+        path: all_products.json
