@@ -71,9 +71,9 @@ def crawl_all():
     """
     네이버 '편의점 행사' 검색 결과를 기반으로, 카테고리별로 모든 편의점의 행사 상품을 수집합니다.
     """
-    print("WebDriver를 설정합니다 (디버깅 모드, 헤드리스 비활성화)...")
+    print("WebDriver를 설정합니다 (헤드리스 모드)...")
     options = Options()
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
     options.add_argument("--disable-gpu")
     options.add_argument("window-size=1920x1080")
     options.add_argument("user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 13_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1")
