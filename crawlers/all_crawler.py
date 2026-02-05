@@ -8,52 +8,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-
-# StaleElementReferenceException에 대응하는 커스텀 대기 클래스
-class wait_for_page_number_to_change:
-    def __init__(self, locator, old_text):
-        self.locator = locator
-        self.old_text = old_text
-
-    def __call__(self, driver):
-        try:
-            new_text = driver.find_element(*self.locator).text
-            return new_text != self.old_text
-        except StaleElementReferenceException:
-            return False
-
-from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-
-# StaleElementReferenceException에 대응하는 커스텀 대기 클래스
-class wait_for_page_number_to_change:
-    def __init__(self, locator, old_text):
-        self.locator = locator
-        self.old_text = old_text
-
-    def __call__(self, driver):
-        try:
-            new_text = driver.find_element(*self.locator).text
-            return new_text != self.old_text
-        except StaleElementReferenceException:
-            return False
-
-from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium import webdriver
-import time
-
 # StaleElementReferenceException에 대응하는 커스텀 대기 클래스
 class wait_for_page_number_to_change:
     def __init__(self, locator, old_text):
@@ -74,6 +28,8 @@ def crawl_all():
     print("WebDriver를 설정합니다 (헤드리스 모드)...")
     options = Options()
     options.add_argument("--headless")
+    options.add_argument("--no-sandbox") # GitHub Actions 환경에서 필요한 옵션
+    options.add_argument("--disable-dev-shm-usage") # GitHub Actions 환경에서 필요한 옵션
     options.add_argument("--disable-gpu")
     options.add_argument("window-size=1920x1080")
     options.add_argument("user-agent=Mozilla/5.0 (iPhone; CPU iPhone OS 13_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Mobile/15E148 Safari/604.1")
@@ -92,23 +48,22 @@ def crawl_all():
         for main_cat_name in main_categories:
             print(f"\n--- 카테고리 '{main_cat_name}' 크롤링 시작 ---")
             driver.get(base_url)
-            time.sleep(2)
-
+            
             try:
-                main_tab = WebDriverWait(driver, 10).until(
+                # 카테고리 탭이 나타날 때까지 대기하고 클릭
+                main_tab = WebDriverWait(driver, 15).until(
                     EC.element_to_be_clickable((By.XPATH, f"//ul[contains(@class, 'tab_list')]//a[span[text()='{main_cat_name}']]"))
                 )
                 driver.execute_script("arguments[0].click();", main_tab)
+                # 탭 클릭 후 상품 목록이 로드될 때까지 명시적으로 대기
                 WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "ul[role='list'] > li[role='listitem']")))
             except TimeoutException:
                 print(f"  - 카테고리 탭 '{main_cat_name}'을 찾거나 로드할 수 없어 건너뜁니다.")
                 continue
 
-            # 페이지네이션 루프
             page_num = 1
             while True:
                 print(f"  - {page_num} 페이지 수집 중 (현재 총 {len(products_data)}개)...")
-                
                 try:
                     wait_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "ul[role='list'] > li[role='listitem']")))
                 except TimeoutException:
@@ -133,11 +88,12 @@ def crawl_all():
                         try:
                             sale_price_str = product.find_element(By.CSS_SELECTOR, "p.item_price em").text.replace(',', '').replace('원', '').strip()
                             sale_price = int(sale_price_str)
-                            original_price_str = product.find_element(By.CSS_SELECTOR, "p.item_price span.item_discount").text.replace(',', '').replace('원', '').strip()
-                            original_price = int(original_price_str)
-                        except NoSuchElementException:
-                            original_price = sale_price
-                        except (ValueError, AttributeError): continue
+                            try:
+                                original_price_str = product.find_element(By.CSS_SELECTOR, "p.item_price span.item_discount").text.replace(',', '').replace('원', '').strip()
+                                original_price = int(original_price_str)
+                            except NoSuchElementException:
+                                original_price = sale_price
+                        except (ValueError, AttributeError, NoSuchElementException): continue
 
                         products_data.append({"brand": scraped_brand, "name": name, "sale_price": sale_price, "original_price": original_price, "image_url": image_url, "category": main_cat_name, "event_type": event_type})
                         processed_products.add((name, scraped_brand))
