@@ -45,7 +45,7 @@ jobs:
 
     # 6. 결과물인 JSON 파일을 아티팩트로 업로드 (결과 확인용)
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: all-products-json
         path: all_products.json
