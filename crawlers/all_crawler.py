@@ -64,6 +64,8 @@ def crawl_all():
             page_num = 1
             while True:
                 print(f"  - {page_num} 페이지 수집 중 (현재 총 {len(products_data)}개)...")
+                is_page_new = False # 새 상품 확인 플래그
+
                 try:
                     wait_element = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "ul[role='list'] > li[role='listitem']")))
                 except TimeoutException:
@@ -75,8 +77,11 @@ def crawl_all():
                     try:
                         name = product.find_element(By.CSS_SELECTOR, "strong.item_name span.name_text").text
                         scraped_brand = product.find_element(By.CSS_SELECTOR, "span.store_info").text
-                        if (name, scraped_brand) in processed_products: continue
-
+                        
+                        if (name, scraped_brand) in processed_products:
+                            continue
+                        
+                        is_page_new = True # 새로운 상품 발견
                         event_type = "N/A"
                         try:
                             event_type = product.find_element(By.CSS_SELECTOR, "strong.item_name span.ico_event").text
@@ -98,6 +103,11 @@ def crawl_all():
                         products_data.append({"brand": scraped_brand, "name": name, "sale_price": sale_price, "original_price": original_price, "image_url": image_url, "category": main_cat_name, "event_type": event_type})
                         processed_products.add((name, scraped_brand))
                     except (StaleElementReferenceException, NoSuchElementException, ValueError): continue
+                
+                # 현재 페이지에 새로운 상품이 하나도 없었다면, 무한 루프로 간주하고 종료
+                if not is_page_new and page_num > 1:
+                    print("    - 새로운 상품이 없어 현재 카테고리의 수집을 종료합니다.")
+                    break
                 
                 try:
                     current_page_num = driver.find_element(By.CSS_SELECTOR, "strong.cmm_npgs_now._current").text
